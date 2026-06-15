@@ -28,15 +28,10 @@ mengukur probabilitas terjadinya defisit keuangan.
 
 @st.cache_data
 def load_data():
-    return pd.read_csv(
-        "Data_Pengeluaran_Mahasiswa.csv",
-        sep=";"
-    )
+    return pd.read_csv("Data_Pengeluaran_Mahasiswa.csv", sep=";")
 
 try:
-
     df = load_data()
-
     df.columns = df.columns.str.strip()
 
     kolom_pemasukan = "Pemasukan / Uang Saku Bulanan"
@@ -104,25 +99,10 @@ try:
 
     col1, col2, col3, col4 = st.columns(4)
 
-    col1.metric(
-        "Jumlah Responden",
-        len(df)
-    )
-
-    col2.metric(
-        "Rata-rata Pemasukan",
-        f"Rp {mean_income:,.0f}"
-    )
-
-    col3.metric(
-        "Rata-rata Pengeluaran",
-        f"Rp {mean_expense:,.0f}"
-    )
-
-    col4.metric(
-        "Probabilitas Defisit",
-        f"{probabilitas_defisit:.2f}%"
-    )
+    col1.metric("Jumlah Responden", len(df))
+    col2.metric("Rata-rata Pemasukan", f"Rp {mean_income:,.0f}")
+    col3.metric("Rata-rata Pengeluaran", f"Rp {mean_expense:,.0f}")
+    col4.metric("Probabilitas Defisit", f"{probabilitas_defisit:.2f}%")
 
     st.divider()
 
@@ -133,19 +113,11 @@ try:
     colA, colB = st.columns(2)
 
     with colA:
-
         st.subheader("📈 Distribusi Pemasukan")
-
         fig, ax = plt.subplots(figsize=(6,4))
-
-        ax.hist(
-            df[kolom_pemasukan],
-            bins=20
-        )
-
+        ax.hist(df[kolom_pemasukan], bins=20)
         ax.set_xlabel("Pemasukan")
         ax.set_ylabel("Frekuensi")
-
         st.pyplot(fig)
 
     # ==================================================
@@ -153,36 +125,23 @@ try:
     # ==================================================
 
     with colB:
-
         st.subheader("📉 Distribusi Pengeluaran")
-
         fig, ax = plt.subplots(figsize=(6,4))
-
-        ax.hist(
-            df[kolom_pengeluaran],
-            bins=20
-        )
-
+        ax.hist(df[kolom_pengeluaran], bins=20)
         ax.set_xlabel("Pengeluaran")
         ax.set_ylabel("Frekuensi")
-
         st.pyplot(fig)
 
     # ==================================================
-    # BOXPLOT
+    # BOXPLOT (SUDAH DIPERBAIKI)
     # ==================================================
 
     st.subheader("📦 Perbandingan Pemasukan dan Pengeluaran")
 
     fig, ax = plt.subplots(figsize=(8,5))
 
-    ax.boxplot(
-        [
-            df[kolom_pemasukan],
-            df[kolom_pengeluaran]
-        ],
-        labels=["Pemasukan","Pengeluaran"]
-    )
+    ax.boxplot([df[kolom_pemasukan], df[kolom_pengeluaran]])
+    ax.set_xticklabels(["Pemasukan", "Pengeluaran"])
 
     st.pyplot(fig)
 
@@ -195,47 +154,23 @@ try:
     numeric_df = df.select_dtypes(include=np.number)
 
     if len(numeric_df.columns) > 1:
-
         fig, ax = plt.subplots(figsize=(10,6))
-
-        sns.heatmap(
-            numeric_df.corr(),
-            annot=True,
-            cmap="Blues",
-            ax=ax
-        )
-
+        sns.heatmap(numeric_df.corr(), annot=True, cmap="Blues", ax=ax)
         st.pyplot(fig)
-
     else:
         st.info("Tidak cukup kolom numerik untuk membuat heatmap.")
 
     # ==================================================
-    # MONTE CARLO
+    # MONTE CARLO CHART
     # ==================================================
 
     st.subheader("🎲 Simulasi Monte Carlo")
 
     fig, ax = plt.subplots(figsize=(10,5))
 
-    ax.hist(
-        simulasi,
-        bins=50,
-        alpha=0.7
-    )
-
-    ax.axvline(
-        mean_income,
-        color="red",
-        linestyle="--",
-        linewidth=3,
-        label="Rata-rata Pemasukan"
-    )
-
-    ax.set_title(
-        "Distribusi Simulasi Pengeluaran Mahasiswa"
-    )
-
+    ax.hist(simulasi, bins=50, alpha=0.7)
+    ax.axvline(mean_income, color="red", linestyle="--", linewidth=3, label="Rata-rata Pemasukan")
+    ax.set_title("Distribusi Simulasi Pengeluaran Mahasiswa")
     ax.legend()
 
     st.pyplot(fig)
@@ -262,17 +197,13 @@ try:
         )
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+    st.plotly_chart(fig, use_container_width=True)
 
     # ==================================================
     # DATASET
     # ==================================================
 
     st.subheader("📋 Dataset")
-
     st.dataframe(df)
 
     # ==================================================
@@ -280,10 +211,7 @@ try:
     # ==================================================
 
     st.subheader("📑 Statistik Deskriptif")
-
-    st.dataframe(
-        df.describe()
-    )
+    st.dataframe(df.describe())
 
     # ==================================================
     # KESIMPULAN
@@ -292,35 +220,11 @@ try:
     st.subheader("📝 Kesimpulan")
 
     if probabilitas_defisit < 30:
-
-        st.success(
-            f"""
-            Probabilitas defisit sebesar {probabilitas_defisit:.2f}%.
-            Risiko defisit tergolong rendah sehingga kondisi keuangan
-            mahasiswa relatif stabil.
-            """
-        )
-
+        st.success(f"Probabilitas defisit sebesar {probabilitas_defisit:.2f}%. Risiko defisit tergolong rendah sehingga kondisi keuangan mahasiswa relatif stabil.")
     elif probabilitas_defisit < 60:
-
-        st.warning(
-            f"""
-            Probabilitas defisit sebesar {probabilitas_defisit:.2f}%.
-            Risiko defisit tergolong sedang sehingga mahasiswa perlu
-            mengelola pengeluaran secara lebih efektif.
-            """
-        )
-
+        st.warning(f"Probabilitas defisit sebesar {probabilitas_defisit:.2f}%. Risiko defisit tergolong sedang sehingga mahasiswa perlu mengelola pengeluaran secara lebih efektif.")
     else:
-
-        st.error(
-            f"""
-            Probabilitas defisit sebesar {probabilitas_defisit:.2f}%.
-            Risiko defisit tergolong tinggi sehingga mahasiswa berpotensi
-            mengalami kekurangan dana bulanan.
-            """
-        )
+        st.error(f"Probabilitas defisit sebesar {probabilitas_defisit:.2f}%. Risiko defisit tergolong tinggi sehingga mahasiswa berpotensi mengalami kekurangan dana bulanan.")
 
 except Exception as e:
-
     st.error(f"Terjadi kesalahan: {e}")
