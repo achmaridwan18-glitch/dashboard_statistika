@@ -214,7 +214,6 @@ try:
     df.columns = df.columns.str.strip()
     
     # [SOLUSI PERMANEN] Auto-deteksi kolom berdasarkan kata kunci
-    # Ini mencegah error akibat spasi tersembunyi atau typo di file CSV
     kolom_pemasukan = next((c for c in df.columns if "Pemasukan" in c or "Uang Saku" in c), None)
     kolom_pengeluaran = next((c for c in df.columns if "Pengeluaran" in c), None)
 
@@ -349,7 +348,8 @@ try:
         colC, colD = st.columns(2)
         with colC:
             st.markdown("### 🎯 Scatter Plot: Pemasukan vs Pengeluaran")
-            fig_scatter = px.scatter(df, x=kolom_pemasukan, y=kolom_pengeluaran, color_discrete_sequence=['#38BDF8'], trendline="ols")
+            # [DIPERBAIKI] trendline dihapus karena membutuhkan 'statsmodels'
+            fig_scatter = px.scatter(df, x=kolom_pemasukan, y=kolom_pengeluaran, color_discrete_sequence=['#38BDF8'])
             fig_scatter.update_layout(paper_bgcolor='#1E293B', plot_bgcolor='#1E293B', font_color='#E2E8F0',
                                       xaxis_title="Pemasukan (Rp)", yaxis_title="Pengeluaran (Rp)")
             st.plotly_chart(fig_scatter, use_container_width=True)
