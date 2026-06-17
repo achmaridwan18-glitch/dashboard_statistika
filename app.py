@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from scipy import stats
+import math
 
 # ==================================================
 # KONFIGURASI HALAMAN
@@ -240,9 +240,20 @@ def apply_theme(fig, title="", height=380):
 # ==================================================
 @st.cache_data
 def load_data():
-    df = pd.read_csv("Data_Pengeluaran_Mahasiswa.csv", sep=";")
-    df.columns = df.columns.str.strip()
-    return df
+    # Coba beberapa kemungkinan nama file
+    import os
+    candidates = [
+        "Data_Pengeluaran_Mahasiswa.csv",
+        "data_pengeluaran_mahasiswa.csv",
+        "Data Pengeluaran Mahasiswa.csv",
+    ]
+    for fname in candidates:
+        if os.path.exists(fname):
+            df = pd.read_csv(fname, sep=";")
+            df.columns = df.columns.str.strip()
+            return df
+    # fallback: coba baca dengan separator auto-detect
+    raise FileNotFoundError("File CSV tidak ditemukan. Pastikan 'Data_Pengeluaran_Mahasiswa.csv' ada di folder yang sama.")
 
 try:
     df = load_data()
@@ -314,8 +325,45 @@ try:
     surplus_cnt  = (~sim_deficit).sum()
     deficit_cnt  = sim_deficit.sum()
 
-    # Paired T-Test
-    t_stat, p_val = stats.ttest_rel(dff[COL_INCOME], dff[COL_TOTAL])
+    # Paired T-Test (manual tanpa scipy, akurasi setara scipy.stats.ttest_rel)
+    diff      = dff[COL_INCOME].values - dff[COL_TOTAL].values
+    n_t       = len(diff)
+    mean_diff = diff.mean()
+    std_diff  = diff.std(ddof=1)
+    se_diff   = std_diff / math.sqrt(n_t)
+    t_stat    = mean_diff / se_diff
+
+    def _betacf(a, b, x, max_iter=300, eps=3e-12):
+        qab, qap, qam = a + b, a + 1.0, a - 1.0
+        c, d = 1.0, 1.0 - qab * x / qap
+        if abs(d) < 1e-30: d = 1e-30
+        d = 1.0 / d; h = d
+        for m in range(1, max_iter + 1):
+            m2 = 2 * m
+            aa = m * (b - m) * x / ((qam + m2) * (a + m2))
+            d = 1.0 + aa * d;  d = (1e-30 if abs(d) < 1e-30 else d); d = 1.0 / d
+            c = 1.0 + aa / c;  c = (1e-30 if abs(c) < 1e-30 else c)
+            h *= d * c
+            aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2))
+            d = 1.0 + aa * d;  d = (1e-30 if abs(d) < 1e-30 else d); d = 1.0 / d
+            c = 1.0 + aa / c;  c = (1e-30 if abs(c) < 1e-30 else c)
+            delta = d * c; h *= delta
+            if abs(delta - 1.0) < eps: break
+        return h
+
+    def _betai(a, b, x):
+        if x <= 0: return 0.0
+        if x >= 1: return 1.0
+        lb = math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b)
+        if x < (a + 1.0) / (a + b + 2.0):
+            return math.exp(a * math.log(x) + b * math.log(1.0 - x) - lb) * _betacf(a, b, x) / a
+        return 1.0 - math.exp(b * math.log(1.0 - x) + a * math.log(x) - lb) * _betacf(b, a, 1.0 - x) / b
+
+    def t_pvalue(t, df_):
+        x = df_ / (df_ + t * t)
+        return min(max(_betai(df_ / 2.0, 0.5, x), 0.0), 1.0)
+
+    p_val = t_pvalue(abs(t_stat), n_t - 1)
 
     # Expense breakdown
     exp_cats = {
