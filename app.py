@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # ==================================================
-# CUSTOM CSS - TEMA MODERN DATA SCIENCE
+# CUSTOM CSS - TEMA MODERN DATA SCIENCE (POWER BI / TABLEAU STYLE)
 # ==================================================
 st.markdown("""
 <style>
@@ -118,13 +118,6 @@ st.markdown("""
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     }
     
-    /* DataFrame Styling */
-    .stDataFrame {
-        background-color: #1E293B;
-        border-radius: 12px;
-        padding: 10px;
-    }
-    
     /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
@@ -173,21 +166,10 @@ st.markdown("""
     
     /* Responsive Design */
     @media (max-width: 768px) {
-        .metric-value {
-            font-size: 24px;
-        }
-        .metric-label {
-            font-size: 11px;
-        }
-        .metric-card {
-            padding: 15px;
-        }
-        h1 {
-            font-size: 24px;
-        }
-        h2 {
-            font-size: 20px;
-        }
+        .metric-value { font-size: 24px; }
+        .metric-label { font-size: 11px; }
+        .metric-card { padding: 15px; }
+        h1 { font-size: 24px; }
     }
     
     /* Button Styling */
@@ -219,33 +201,28 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==================================================
-# LOAD DATA FUNCTION
+# LOAD DATA & AUTO-DETEKSI KOLOM (ANTI ERROR)
 # ==================================================
 @st.cache_data
 def load_data():
-    """Load dataset dari file CSV"""
     return pd.read_csv("Data_Pengeluaran_Mahasiswa.csv", sep=";")
 
-# ==================================================
-# MAIN DASHBOARD
-# ==================================================
 try:
-    # Load and validate data
     df = load_data()
+    
+    # Bersihkan spasi di awal/akhir nama kolom dari CSV
     df.columns = df.columns.str.strip()
     
-    kolom_pemasukan = "Pemasukan / Uang Saku Bulanan "
-    kolom_pengeluaran = "Total_Pengeluaran_Bulanan "
-    
-    # Data Validation
-    if kolom_pemasukan not in df.columns:
-        st.error(f"❌ Kolom '{kolom_pemasukan}' tidak ditemukan dalam dataset.")
+    # [SOLUSI PERMANEN] Auto-deteksi kolom berdasarkan kata kunci
+    # Ini mencegah error akibat spasi tersembunyi atau typo di file CSV
+    kolom_pemasukan = next((c for c in df.columns if "Pemasukan" in c or "Uang Saku" in c), None)
+    kolom_pengeluaran = next((c for c in df.columns if "Pengeluaran" in c), None)
+
+    if not kolom_pemasukan or not kolom_pengeluaran:
+        st.error("❌ Kolom Pemasukan atau Pengeluaran tidak ditemukan di CSV Anda.")
+        st.info(f"💡 **Kolom yang terbaca sistem:** {df.columns.tolist()}")
         st.stop()
-    
-    if kolom_pengeluaran not in df.columns:
-        st.error(f"❌ Kolom '{kolom_pengeluaran}' tidak ditemukan dalam dataset.")
-        st.stop()
-    
+
     # ==================================================
     # SIDEBAR - PENGATURAN
     # ==================================================
@@ -262,50 +239,37 @@ try:
     )
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("""
-    ### 📖 Tentang Dashboard
-    
-    Dashboard ini menganalisis kondisi keuangan mahasiswa menggunakan **Simulasi Monte Carlo** 
-    untuk mengukur probabilitas defisit keuangan.
-    
-    **Metodologi:**
-    - Analisis statistik deskriptif
-    - Simulasi Monte Carlo
-    - Visualisasi data interaktif
-    
-    **Peneliti:** [Nama Anda]  
-    **Institusi:** [Nama Institusi]  
-    **Tahun:** 2024
+    st.sidebar.markdown(f"""
+    ### 📖 Informasi Dataset
+    - **File:** `Data_Pengeluaran_Mahasiswa.csv`
+    - **Kolom Pemasukan:** `{kolom_pemasukan}`
+    - **Kolom Pengeluaran:** `{kolom_pengeluaran}`
+    - **Total Data:** {len(df)} Baris
     """)
-    
+
     # ==================================================
-    # PERHITUNGAN STATISTIK
+    # PERHITUNGAN STATISTIK & MONTE CARLO
     # ==================================================
     mean_income = df[kolom_pemasukan].mean()
     mean_expense = df[kolom_pengeluaran].mean()
     std_expense = df[kolom_pengeluaran].std()
     selisih = mean_income - mean_expense
     
-    # Monte Carlo Simulation
     np.random.seed(42)
-    simulasi = np.random.normal(
-        loc=mean_expense,
-        scale=std_expense,
-        size=jumlah_simulasi
-    )
+    simulasi = np.random.normal(loc=mean_expense, scale=std_expense, size=jumlah_simulasi)
     
     defisit = simulasi > mean_income
     probabilitas_defisit = (defisit.sum() / jumlah_simulasi) * 100
     surplus_count = (~defisit).sum()
     deficit_count = defisit.sum()
-    
+
     # ==================================================
     # JUDUL DASHBOARD
     # ==================================================
     st.markdown("# 📊 Dashboard Analisis Defisit Keuangan Mahasiswa")
     st.markdown("### Simulasi Monte Carlo untuk Pengukuran Risiko Finansial")
     st.markdown("---")
-    
+
     # ==================================================
     # EXECUTIVE SUMMARY - KPI CARDS
     # ==================================================
@@ -352,351 +316,145 @@ try:
         """, unsafe_allow_html=True)
     
     st.markdown("---")
-    
+
     # ==================================================
-    # FINANCIAL OVERVIEW
+    # TABS LAYOUT
     # ==================================================
-    st.markdown("## 💰 Financial Overview")
-    
-    tab1, tab2 = st.tabs(["📊 Distribusi Data", "📈 Analisis Perbandingan"])
-    
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "💰 Financial Overview", 
+        "🚨 Risk Analytics", 
+        "🔥 Analisis Korelasi", 
+        "📝 Research Insights"
+    ])
+
+    # ==========================
+    # TAB 1: FINANCIAL OVERVIEW
+    # ==========================
     with tab1:
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
+        colA, colB = st.columns(2)
+        with colA:
             st.markdown("### 📈 Distribusi Pemasukan")
-            fig_income = px.histogram(
-                df, 
-                x=kolom_pemasukan, 
-                nbins=20,
-                title="Distribusi Pemasukan Mahasiswa",
-                color_discrete_sequence=['#38BDF8']
-            )
-            fig_income.update_layout(
-                paper_bgcolor='#1E293B',
-                plot_bgcolor='#1E293B',
-                font_color='#E2E8F0',
-                xaxis_title="Pemasukan (Rp)",
-                yaxis_title="Frekuensi",
-                bargap=0.05
-            )
+            fig_income = px.histogram(df, x=kolom_pemasukan, nbins=20, color_discrete_sequence=['#38BDF8'])
+            fig_income.update_layout(paper_bgcolor='#1E293B', plot_bgcolor='#1E293B', font_color='#E2E8F0',
+                                     xaxis_title="Pemasukan (Rp)", yaxis_title="Frekuensi", bargap=0.05)
             st.plotly_chart(fig_income, use_container_width=True)
         
-        with col_b:
+        with colB:
             st.markdown("### 📉 Distribusi Pengeluaran")
-            fig_expense = px.histogram(
-                df, 
-                x=kolom_pengeluaran, 
-                nbins=20,
-                title="Distribusi Pengeluaran Mahasiswa",
-                color_discrete_sequence=['#EF4444']
-            )
-            fig_expense.update_layout(
-                paper_bgcolor='#1E293B',
-                plot_bgcolor='#1E293B',
-                font_color='#E2E8F0',
-                xaxis_title="Pengeluaran (Rp)",
-                yaxis_title="Frekuensi",
-                bargap=0.05
-            )
+            fig_expense = px.histogram(df, x=kolom_pengeluaran, nbins=20, color_discrete_sequence=['#EF4444'])
+            fig_expense.update_layout(paper_bgcolor='#1E293B', plot_bgcolor='#1E293B', font_color='#E2E8F0',
+                                      xaxis_title="Pengeluaran (Rp)", yaxis_title="Frekuensi", bargap=0.05)
             st.plotly_chart(fig_expense, use_container_width=True)
-    
-    with tab2:
-        col_c, col_d = st.columns(2)
-        
-        with col_c:
+
+        colC, colD = st.columns(2)
+        with colC:
             st.markdown("### 🎯 Scatter Plot: Pemasukan vs Pengeluaran")
-            fig_scatter = px.scatter(
-                df,
-                x=kolom_pemasukan,
-                y=kolom_pengeluaran,
-                title="Hubungan Pemasukan dan Pengeluaran",
-                color_discrete_sequence=['#38BDF8']
-            )
-            fig_scatter.update_layout(
-                paper_bgcolor='#1E293B',
-                plot_bgcolor='#1E293B',
-                font_color='#E2E8F0',
-                xaxis_title="Pemasukan (Rp)",
-                yaxis_title="Pengeluaran (Rp)"
-            )
+            fig_scatter = px.scatter(df, x=kolom_pemasukan, y=kolom_pengeluaran, color_discrete_sequence=['#38BDF8'], trendline="ols")
+            fig_scatter.update_layout(paper_bgcolor='#1E293B', plot_bgcolor='#1E293B', font_color='#E2E8F0',
+                                      xaxis_title="Pemasukan (Rp)", yaxis_title="Pengeluaran (Rp)")
             st.plotly_chart(fig_scatter, use_container_width=True)
         
-        with col_d:
+        with colD:
             st.markdown("### 📦 Boxplot Perbandingan")
             fig_box = go.Figure()
-            fig_box.add_trace(go.Box(
-                y=df[kolom_pemasukan], 
-                name="Pemasukan", 
-                marker_color='#38BDF8',
-                boxmean=True
-            ))
-            fig_box.add_trace(go.Box(
-                y=df[kolom_pengeluaran], 
-                name="Pengeluaran", 
-                marker_color='#EF4444',
-                boxmean=True
-            ))
-            fig_box.update_layout(
-                title="Perbandingan Pemasukan dan Pengeluaran",
-                paper_bgcolor='#1E293B',
-                plot_bgcolor='#1E293B',
-                font_color='#E2E8F0',
-                yaxis_title="Jumlah (Rp)"
-            )
+            fig_box.add_trace(go.Box(y=df[kolom_pemasukan], name="Pemasukan", marker_color='#38BDF8', boxmean=True))
+            fig_box.add_trace(go.Box(y=df[kolom_pengeluaran], name="Pengeluaran", marker_color='#EF4444', boxmean=True))
+            fig_box.update_layout(title="Perbandingan Pemasukan dan Pengeluaran", paper_bgcolor='#1E293B',
+                                  plot_bgcolor='#1E293B', font_color='#E2E8F0', yaxis_title="Jumlah (Rp)")
             st.plotly_chart(fig_box, use_container_width=True)
-    
-    st.markdown("---")
-    
-    # ==================================================
-    # RISK ANALYTICS
-    # ==================================================
-    st.markdown("## 🚨 Risk Analytics")
-    
-    tab3, tab4 = st.tabs(["🎲 Monte Carlo Simulation", "📊 Risk Assessment"])
-    
-    with tab3:
+
+    # ==========================
+    # TAB 2: RISK ANALYTICS
+    # ==========================
+    with tab2:
         st.markdown("### 🎲 Distribusi Simulasi Monte Carlo")
         fig_monte = go.Figure()
-        fig_monte.add_trace(go.Histogram(
-            x=simulasi,
-            nbinsx=50,
-            name="Simulasi Pengeluaran",
-            marker_color='#38BDF8',
-            opacity=0.7
-        ))
-        fig_monte.add_vline(
-            x=mean_income, 
-            line_dash="dash", 
-            line_color="#EF4444", 
-            line_width=3,
-            annotation_text=f"Rata-rata Pemasukan: Rp {mean_income:,.0f}",
-            annotation_position="top right"
-        )
-        fig_monte.update_layout(
-            title=f"Distribusi {jumlah_simulasi:,} Simulasi Pengeluaran",
-            paper_bgcolor='#1E293B',
-            plot_bgcolor='#1E293B',
-            font_color='#E2E8F0',
-            xaxis_title="Pengeluaran (Rp)",
-            yaxis_title="Frekuensi",
-            showlegend=False
-        )
+        fig_monte.add_trace(go.Histogram(x=simulasi, nbinsx=50, name="Simulasi Pengeluaran", marker_color='#38BDF8', opacity=0.7))
+        fig_monte.add_vline(x=mean_income, line_dash="dash", line_color="#EF4444", line_width=3,
+                            annotation_text=f"Batas Pemasukan: Rp {mean_income:,.0f}", annotation_position="top right")
+        fig_monte.update_layout(title=f"Distribusi {jumlah_simulasi:,} Simulasi Pengeluaran", paper_bgcolor='#1E293B',
+                                plot_bgcolor='#1E293B', font_color='#E2E8F0', xaxis_title="Pengeluaran (Rp)", yaxis_title="Frekuensi")
         st.plotly_chart(fig_monte, use_container_width=True)
-    
-    with tab4:
-        col_e, col_f = st.columns(2)
-        
-        with col_e:
+
+        colE, colF = st.columns(2)
+        with colE:
             st.markdown("### 🚨 Gauge Chart: Tingkat Risiko Defisit")
             gauge_color = "#EF4444" if probabilitas_defisit > 60 else "#F59E0B" if probabilitas_defisit > 30 else "#10B981"
-            
             fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=probabilitas_defisit,
+                mode="gauge+number", value=probabilitas_defisit,
                 number={'suffix': '%', 'font': {'size': 40, 'color': gauge_color}},
                 title={"text": "Probabilitas Defisit", 'font': {'size': 20}},
                 gauge={
                     'axis': {'range': [0, 100], 'tickcolor': '#E2E8F0'},
                     'bar': {'color': gauge_color, 'thickness': 0.3},
-                    'steps': [
-                        {'range': [0, 30], 'color': '#064E3B'},
-                        {'range': [30, 60], 'color': '#78350F'},
-                        {'range': [60, 100], 'color': '#7F1D1D'}
-                    ],
-                    'threshold': {
-                        'line': {'color': "white", 'width': 4},
-                        'thickness': 0.75,
-                        'value': probabilitas_defisit
-                    }
+                    'steps': [{'range': [0, 30], 'color': '#064E3B'}, {'range': [30, 60], 'color': '#78350F'}, {'range': [60, 100], 'color': '#7F1D1D'}],
+                    'threshold': {'line': {'color': "white", 'width': 4}, 'thickness': 0.75, 'value': probabilitas_defisit}
                 }
             ))
-            fig_gauge.update_layout(
-                paper_bgcolor='#1E293B',
-                font_color='#E2E8F0',
-                height=350
-            )
+            fig_gauge.update_layout(paper_bgcolor='#1E293B', font_color='#E2E8F0', height=350)
             st.plotly_chart(fig_gauge, use_container_width=True)
         
-        with col_f:
+        with colF:
             st.markdown("### 🍩 Donut Chart: Surplus vs Defisit")
             fig_donut = go.Figure(data=[go.Pie(
-                labels=['✅ Surplus', '❌ Defisit'],
-                values=[surplus_count, deficit_count],
-                hole=0.45,
-                marker={'colors': ['#10B981', '#EF4444']},
-                textinfo='label+percent',
-                textposition='outside'
+                labels=['✅ Surplus', '❌ Defisit'], values=[surplus_count, deficit_count], hole=0.45,
+                marker={'colors': ['#10B981', '#EF4444']}, textinfo='label+percent', textposition='outside'
             )])
-            fig_donut.update_layout(
-                title=f"Distribusi Hasil Simulasi ({jumlah_simulasi:,} iterasi)",
-                paper_bgcolor='#1E293B',
-                font_color='#E2E8F0',
-                showlegend=True,
-                height=350
-            )
+            fig_donut.update_layout(title=f"Distribusi Hasil Simulasi", paper_bgcolor='#1E293B', font_color='#E2E8F0', height=350)
             st.plotly_chart(fig_donut, use_container_width=True)
-    
-    st.markdown("---")
-    
-    # ==================================================
-    # HEATMAP KORELASI
-    # ==================================================
-    st.markdown("## 🔥 Analisis Korelasi")
-    numeric_df = df.select_dtypes(include=np.number)
-    
-    if len(numeric_df.columns) > 1:
-        fig_heatmap = px.imshow(
-            numeric_df.corr(),
-            text_auto=".2f",
-            color_continuous_scale='Blues',
-            title="Heatmap Korelasi Variabel Numerik",
-            aspect='auto'
-        )
-        fig_heatmap.update_layout(
-            paper_bgcolor='#1E293B',
-            plot_bgcolor='#1E293B',
-            font_color='#E2E8F0'
-        )
-        st.plotly_chart(fig_heatmap, use_container_width=True)
-    else:
-        st.info("ℹ️ Tidak cukup kolom numerik untuk membuat heatmap.")
-    
-    st.markdown("---")
-    
-    # ==================================================
-    # RESEARCH INSIGHTS
-    # ==================================================
-    st.markdown("## 📝 Research Insights")
-    
-    # Automatic Insights Panel
-    st.markdown("### 💡 Insight Otomatis")
-    
-    insights = []
-    
-    # Insight 1: Financial Balance
-    if selisih > 0:
-        insights.append({
-            'icon': '✅',
-            'title': 'Kondisi Finansial Positif',
-            'text': f'Rata-rata mahasiswa memiliki surplus sebesar Rp {selisih:,.0f} per bulan, menunjukkan pengelolaan keuangan yang baik.'
-        })
-    else:
-        insights.append({
-            'icon': '⚠️',
-            'title': 'Kondisi Finansial Negatif',
-            'text': f'Rata-rata mahasiswa mengalami defisit sebesar Rp {abs(selisih):,.0f} per bulan, memerlukan perbaikan dalam pengelolaan keuangan.'
-        })
-    
-    # Insight 2: Risk Level
-    if probabilitas_defisit < 30:
-        insights.append({
-            'icon': '🟢',
-            'title': 'Risiko Rendah',
-            'text': f'Probabilitas defisit hanya {probabilitas_defisit:.2f}%, menunjukkan stabilitas keuangan yang baik.'
-        })
-    elif probabilitas_defisit < 60:
-        insights.append({
-            'icon': '🟡',
-            'title': 'Risiko Sedang',
-            'text': f'Probabilitas defisit {probabilitas_defisit:.2f}% memerlukan perhatian dan pengelolaan pengeluaran yang lebih efektif.'
-        })
-    else:
-        insights.append({
-            'icon': '🔴',
-            'title': 'Risiko Tinggi',
-            'text': f'Probabilitas defisit mencapai {probabilitas_defisit:.2f}%, menunjukkan potensi besar kekurangan dana bulanan.'
-        })
-    
-    # Insight 3: Variability
-    cv_expense = (std_expense / mean_expense) * 100 if mean_expense > 0 else 0
-    if cv_expense > 30:
-        insights.append({
-            'icon': '📊',
-            'title': 'Variabilitas Tinggi',
-            'text': f'Pengeluaran mahasiswa sangat bervariasi (CV: {cv_expense:.1f}%), menunjukkan pola pengeluaran yang tidak konsisten.'
-        })
-    else:
-        insights.append({
-            'icon': '📊',
-            'title': 'Variabilitas Rendah',
-            'text': f'Pengeluaran mahasiswa relatif konsisten (CV: {cv_expense:.1f}%).'
-        })
-    
-    # Insight 4: Data Size
-    if len(df) < 50:
-        insights.append({
-            'icon': 'ℹ️',
-            'title': 'Ukuran Sampel',
-            'text': f'Dengan {len(df)} responden, hasil analisis mungkin belum representatif. Disarankan untuk menambah sampel.'
-        })
-    else:
-        insights.append({
-            'icon': '✅',
-            'title': 'Ukuran Sampel Memadai',
-            'text': f'{len(df)} responden memberikan basis data yang cukup untuk analisis statistik.'
-        })
-    
-    for insight in insights:
-        st.markdown(f"""
-        <div class="insight-box">
-            <h4>{insight['icon']} {insight['title']}</h4>
-            <p>{insight['text']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    
-    # ==================================================
-    # DATASET DAN STATISTIK
-    # ==================================================
-    st.markdown("### 📋 Dataset dan Statistik")
-    
-    tab5, tab6 = st.tabs(["📄 Dataset Lengkap", "📑 Statistik Deskriptif"])
-    
-    with tab5:
-        st.dataframe(df, use_container_width=True, height=400)
-    
-    with tab6:
-        st.dataframe(df.describe(), use_container_width=True)
-    
-    # ==================================================
-    # KESIMPULAN
-    # ==================================================
-    st.markdown("---")
-    st.markdown("### 🎯 Kesimpulan Penelitian")
-    
-    if probabilitas_defisit < 30:
-        st.success(f"""
-        **Probabilitas defisit sebesar {probabilitas_defisit:.2f}%** menunjukkan bahwa mayoritas mahasiswa memiliki kondisi keuangan yang relatif stabil.
+
+    # ==========================
+    # TAB 3: ANALISIS KORELASI
+    # ==========================
+    with tab3:
+        st.markdown("### 🔥 Heatmap Korelasi Variabel Numerik")
+        numeric_df = df.select_dtypes(include=np.number)
+        if len(numeric_df.columns) > 1:
+            fig_heatmap = px.imshow(numeric_df.corr(), text_auto=".2f", color_continuous_scale='Blues', aspect='auto')
+            fig_heatmap.update_layout(paper_bgcolor='#1E293B', plot_bgcolor='#1E293B', font_color='#E2E8F0')
+            st.plotly_chart(fig_heatmap, use_container_width=True)
+        else:
+            st.info("ℹ️ Tidak cukup kolom numerik untuk membuat heatmap.")
+
+    # ==========================
+    # TAB 4: RESEARCH INSIGHTS
+    # ==========================
+    with tab4:
+        st.markdown("### 💡 Insight Otomatis & Kesimpulan")
         
-        **Rekomendasi:**
-        - ✅ Pertahankan pola pengelolaan keuangan saat ini
-        - 📚 Tingkatkan kesadaran finansial melalui edukasi
-        - 📊 Monitor pengeluaran secara berkala
-        """)
-    elif probabilitas_defisit < 60:
-        st.warning(f"""
-        **Probabilitas defisit sebesar {probabilitas_defisit:.2f}%** menunjukkan risiko sedang yang memerlukan perhatian.
-        
-        **Rekomendasi:**
-        - 📝 Buat anggaran bulanan yang lebih ketat
-        - 🔍 Identifikasi pengeluaran yang tidak esensial
-        - 💼 Cari sumber pendapatan tambahan
-        - 📈 Terapkan metode budgeting seperti 50/30/20
-        """)
-    else:
-        st.error(f"""
-        **Probabilitas defisit sebesar {probabilitas_defisit:.2f}%** menunjukkan risiko tinggi defisit keuangan.
-        
-        **Rekomendasi:**
-        - 🚨 Segera lakukan audit pengeluaran secara menyeluruh
-        - ✂️ Kurangi pengeluaran non-prioritas secara signifikan
-        - 💰 Cari alternatif pendapatan (part-time, freelance)
-        - 🎓 Pertimbangkan bantuan finansial atau beasiswa
-        - 👨‍💼 Konsultasi dengan ahli keuangan atau konselor
-        """)
-    
+        insights = []
+        if selisih > 0:
+            insights.append({'icon': '✅', 'title': 'Kondisi Finansial Positif', 'text': f'Rata-rata mahasiswa memiliki surplus sebesar Rp {selisih:,.0f} per bulan.'})
+        else:
+            insights.append({'icon': '⚠️', 'title': 'Kondisi Finansial Negatif', 'text': f'Rata-rata mahasiswa mengalami defisit sebesar Rp {abs(selisih):,.0f} per bulan.'})
+            
+        if probabilitas_defisit < 30:
+            insights.append({'icon': '🟢', 'title': 'Risiko Rendah', 'text': f'Probabilitas defisit hanya {probabilitas_defisit:.2f}%, stabilitas keuangan baik.'})
+        elif probabilitas_defisit < 60:
+            insights.append({'icon': '🟡', 'title': 'Risiko Sedang', 'text': f'Probabilitas defisit {probabilitas_defisit:.2f}% memerlukan pengelolaan pengeluaran lebih efektif.'})
+        else:
+            insights.append({'icon': '🔴', 'title': 'Risiko Tinggi', 'text': f'Probabilitas defisit {probabilitas_defisit:.2f}%, potensi besar kekurangan dana bulanan.'})
+            
+        for insight in insights:
+            st.markdown(f"""
+            <div class="insight-box">
+                <h4>{insight['icon']} {insight['title']}</h4>
+                <p>{insight['text']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("---")
+        st.markdown("### 🎯 Kesimpulan Penelitian & Rekomendasi")
+        if probabilitas_defisit < 30:
+            st.success(f"**Probabilitas defisit {probabilitas_defisit:.2f}%**. Mayoritas mahasiswa stabil. Rekomendasi: Pertahankan pola budgeting dan tingkatkan literasi finansial.")
+        elif probabilitas_defisit < 60:
+            st.warning(f"**Probabilitas defisit {probabilitas_defisit:.2f}%**. Risiko sedang. Rekomendasi: Terapkan metode budgeting 50/30/20 dan catat pengeluaran harian.")
+        else:
+            st.error(f"**Probabilitas defisit {probabilitas_defisit:.2f}%**. Risiko tinggi. Rekomendasi: Audit pengeluaran non-prioritas dan cari alternatif pendapatan tambahan.")
+            
+        st.markdown("### 📋 Dataset Mentah")
+        st.dataframe(df, use_container_width=True, height=300)
+
     # ==================================================
     # FOOTER
     # ==================================================
@@ -704,18 +462,15 @@ try:
     st.markdown("""
     <div class="footer">
         <p><strong>📊 Dashboard Analisis Defisit Keuangan Mahasiswa</strong></p>
-        <p>Developed with ❤️ using Streamlit & Plotly | Simulasi Monte Carlo</p>
-        <p>© 2024 Research Dashboard | Siap untuk Sidang Skripsi, Jurnal Ilmiah, atau Portofolio Data Analyst</p>
+        <p>Developed with Streamlit & Plotly | Simulasi Monte Carlo</p>
     </div>
     """, unsafe_allow_html=True)
 
 except Exception as e:
-    st.error(f"❌ Terjadi kesalahan: {e}")
+    st.error(f"❌ Terjadi kesalahan sistem: {e}")
     st.markdown("### 📝 Panduan Troubleshooting:")
     st.markdown("""
-    1. ✅ Pastikan file `Data_Pengeluaran_Mahasiswa.csv` tersedia di direktori yang sama dengan `app.py`
-    2. ✅ Pastikan file CSV menggunakan delimiter `;` (semicolon)
-    3. ✅ Pastikan kolom bernama `Pemasukan / Uang Saku Bulanan` dan `Total_Pengeluaran_Bulanan`
-    4. ✅ Periksa format data (harus numerik)
-    5. ✅ Install dependencies: `pip install streamlit pandas numpy plotly`
+    1. Pastikan file `Data_Pengeluaran_Mahasiswa.csv` ada di folder yang sama.
+    2. Pastikan delimiter CSV adalah titik koma (`;`).
+    3. Pastikan terdapat kolom yang mengandung kata "Pemasukan" atau "Uang Saku" dan "Pengeluaran".
     """)
